@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1A140C">
+<title>1M Beers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Geist', system-ui, sans-serif;
+    background: #0d0b07;
+    color: #F4ECDD;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  /* On real mobile devices, let the app fill the screen edge-to-edge.
+     Desktop still gets the pretty phone-frame presentation. */
+  @media (max-width: 640px) {
+    body { overflow: hidden; }
+    #stage { background: #1A140C !important; }
+  }
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+  button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  input, textarea, select { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  /* Focus-visible styling — WCAG AA */
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid #F4B73D;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* Respect reduced motion globally */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+  /* Soft pub-warmth backdrop for the frame */
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 20% 25%, #2A1F12 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, #3A2A18 0%, transparent 45%),
+      #0d0b07;
+  }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- ════════════════════════════════════════════════════════════
+       BACKEND CONFIG — fill these in to enable real shared storage.
+       Get them from Supabase: Settings → API (anon/public key is safe).
+       Leave blank to run in localStorage-only mode (each visitor is solo).
+       ════════════════════════════════════════════════════════════ -->
+  <script>
+    window.__1MB_CONFIG = {
+      supabaseUrl: "https://kgclkfzsditawbhhmrix.supabase.co",
+      supabaseAnonKey: "sb_publishable_09sCZRKxylO3QhGqYUp7lw_SxnflGCt",
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+  <script src="app/backend-supabase.jsx"></script>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="app/storage.jsx"></script>
+  <script type="text/babel" src="app/beer-data.jsx"></script>
+  <script type="text/babel" src="app/icons.jsx"></script>
+  <script type="text/babel" src="app/ui.jsx"></script>
+  <script type="text/babel" src="app/sound.jsx"></script>
+  <script type="text/babel" src="app/polish.jsx"></script>
+  <script type="text/babel" src="app/onboarding.jsx"></script>
+  <script type="text/babel" src="app/community.jsx"></script>
+  <script type="text/babel" src="app/home.jsx"></script>
+  <script type="text/babel" src="app/toasts-feed.jsx"></script>
+  <script type="text/babel" src="app/stats-screen.jsx"></script>
+  <script type="text/babel" src="app/log-flow.jsx"></script>
+  <script type="text/babel" src="app/profile-settings.jsx"></script>
+  <script type="text/babel" src="app/breweries.jsx"></script>
+  <script type="text/babel" src="app/admin.jsx"></script>
+
+  <script type="text/babel">
+    // ─────────────────────────────────────────────────────────────
+    // Bottom nav (3-tab: Home · Log · You)
+    // ─────────────────────────────────────────────────────────────
+    function BottomNav({ active, onTab, onOpenLog }) {
+      const tabs = [
+        { id: 'home', label: 'Home', icon: 'home' },
+        { id: 'toasts', label: 'Toasts', icon: 'beer' },
+        { id: 'log', label: 'Log', icon: 'plus', center: true },
+        { id: 'stats', label: 'Stats', icon: 'chart' },
+        { id: 'profile', label: 'You', icon: 'user' },
+      ];
+      return (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 30,
+          background: 'rgba(26,20,12,0.92)', backdropFilter: 'blur(16px)',
+          borderTop: '1px solid rgba(244,236,221,0.06)',
+          padding: '12px 8px 28px',
+          display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end',
+        }}>
+          {tabs.map(t => {
+            if (t.center) {
+              return (
+                <button key={t.id} onClick={onOpenLog} style={{
+                  width: 60, height: 60, borderRadius: '50%',
+                  background: '#F4B73D', border: 0, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginTop: -24,
+                  boxShadow: '0 10px 24px rgba(244,183,61,0.35), 0 0 0 4px rgba(26,20,12,0.92)',
+                  color: '#1A140C', transition: 'transform 150ms',
+                }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <Icon name="plus" size={28} strokeWidth={2.6} />
+                </button>
+              );
+            }
+            const isActive = active === t.id;
+            return (
+              <button key={t.id} onClick={() => onTab(t.id)} style={{
+                flex: 1, maxWidth: 100, background: 'none', border: 'none', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                padding: '4px 12px',
+                color: isActive ? '#F4B73D' : '#B8A584',
+                fontFamily: 'Geist, system-ui', fontSize: 10.5, fontWeight: 600,
+                letterSpacing: 0.2,
+                transition: 'color 200ms',
+              }}>
+                <Icon name={t.icon} size={22} strokeWidth={isActive ? 2.3 : 2} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Splash + first-run init
+    // ─────────────────────────────────────────────────────────────
+    async function bootstrap() {
+      // 1) Ensure beers:database is hydrated (seed merge)
+      const existing = (await storage_util.get('beers:database', true)) || [];
+      const existingKeys = new Set(existing.map(b => b.id));
+      const additions = BEER_SEEDS.filter(b => !existingKeys.has(b.id));
+      if (additions.length) {
+        await storage_util.set('beers:database', [...existing, ...additions], true);
+      }
+      // 2) Process any pending writes (best-effort, fire-and-forget)
+      storage_util.processRetryQueue();
+      // 3) Load profile
+      return await storage_util.get('user:profile', false);
+    }
+
+    function Splash() {
+      return (
+        <div style={{
+          height: '100%', background: '#1A140C',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 20,
+        }}>
+          <div style={{ animation: 'fade-in 400ms ease-out' }}>
+            <PintGlass size={90} fill={0.75} />
+          </div>
+          <div style={{
+            fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 32,
+            color: '#F4ECDD', letterSpacing: '-0.03em',
+          }}>1M Beers</div>
+          <div style={{
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#7A6B52',
+            letterSpacing: '0.12em',
+          }}>POURING UP…</div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // (MilestoneOverlay moved to app/community.jsx)
+    // ─────────────────────────────────────────────────────────────
+    function _UNUSED_MilestoneOverlay({ milestone, onClose }) {
+      return (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 100,
+          background: 'radial-gradient(circle at 50% 40%, #D97F2C, #1A140C)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 30, textAlign: 'center', overflow: 'hidden',
+        }}>
+          {Array.from({ length: 30 }).map((_, i) => {
+            const colors = ['#F4B73D', '#FFF6E0', '#87C66B', '#E07A5F', '#F4ECDD'];
+            return (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 17 + 5) % 100}%`, top: `${(i * 23 + 7) % 100}%`,
+                width: 6 + (i % 3) * 3, height: 10 + (i % 3) * 4,
+                background: colors[i % colors.length],
+                transform: `rotate(${(i * 37) % 360}deg)`,
+                opacity: 0.85,
+                animationName: `confetti-${i % 4}`,
+                animationDuration: '2.4s',
+                animationTimingFunction: 'ease-out',
+                animationIterationCount: 'infinite',
+                animationDelay: `${(i * 0.07) % 1}s`,
+              }} />
+            );
+          })}
+          <style>{`
+            @keyframes confetti-0 { 0%{transform:translateY(-30px) rotate(0)} 100%{transform:translateY(80px) rotate(360deg);opacity:0} }
+            @keyframes confetti-1 { 0%{transform:translateY(-30px) rotate(0)} 100%{transform:translateY(60px) rotate(-360deg);opacity:0} }
+            @keyframes confetti-2 { 0%{transform:translateY(-30px) rotate(0)} 100%{transform:translateY(90px) rotate(180deg);opacity:0} }
+            @keyframes confetti-3 { 0%{transform:translateY(-30px) rotate(0)} 100%{transform:translateY(70px) rotate(-180deg);opacity:0} }
+          `}</style>
+          <Eyebrow style={{ color: '#F4ECDD', opacity: 0.75 }}>WE JUST CROSSED</Eyebrow>
+          <div style={{
+            fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 76,
+            color: '#FFF6E0', letterSpacing: '-0.04em', lineHeight: 0.95, marginTop: 10,
+          }}>{milestone.toLocaleString()}</div>
+          <div style={{
+            fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 22,
+            color: '#F4ECDD', letterSpacing: '-0.02em', marginTop: 6, marginBottom: 18,
+          }}>beers, together.</div>
+          <div style={{
+            fontFamily: 'Geist, system-ui', fontSize: 14, color: '#F4ECDD', opacity: 0.8,
+            maxWidth: 280, lineHeight: 1.5, marginBottom: 30,
+          }}>
+            That's a lot of foam. Pour a small one and clink at your screen — we'll feel it.
+          </div>
+          <div style={{ width: '100%', maxWidth: 300 }}>
+            <Btn onClick={onClose} variant="ghost" style={{ background: '#F4ECDD', color: '#1A140C' }}>
+              Cheers <Icon name="arrowRight" size={20} />
+            </Btn>
+          </div>
+        </div>
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Root App
+    // ─────────────────────────────────────────────────────────────
+    const MILESTONES = [1000, 10000, 100000, 250000, 500000, 750000, 1000000];
+
+    function App() {
+      const [booted, setBooted] = React.useState(false);
+      const [profile, setProfile] = React.useState(null);
+      const [tab, setTab] = React.useState('home');
+      const [overlay, setOverlay] = React.useState(null);
+      const [milestone, setMilestone] = React.useState(null);
+      const [prefillBeer, setPrefillBeer] = React.useState(null);
+      const [error, setError] = React.useState(null);
+      const [cheatSheet, setCheatSheet] = React.useState(false);
+      const [successBanner, setSuccessBanner] = React.useState(null);
+      const [adminOpen, setAdminOpen] = React.useState(false);
+      const lastCountRef = React.useRef(0);
+
+      React.useEffect(() => {
+        (async () => {
+          const p = await bootstrap();
+          setProfile(p);
+          // Sound preference
+          if (p?.sound_enabled === false) SoundManager.setEnabled(false);
+          const initialCount = (await storage_util.get('community:count', true)) || 0;
+          lastCountRef.current = initialCount;
+          // Restore success banner if recent
+          const banner = await storage_util.get('user:success_banner', false);
+          if (banner && Date.now() - banner.shown_at < 86400000) {
+            setSuccessBanner(banner);
+          }
+          setBooted(true);
+          EventLog.record('app_boot', { mode: storage_util.mode });
+        })();
+      }, []);
+
+      // ── Milestone polling ──
+      React.useEffect(() => {
+        if (!booted || !profile) return;
+        let timer;
+        const poll = async () => {
+          if (document.hidden) { timer = setTimeout(poll, 30000); return; }
+          const c = (await storage_util.get('community:count', true)) || 0;
+          const prev = lastCountRef.current;
+          const crossed = MILESTONES.find(m => prev < m && c >= m);
+          if (crossed) {
+            const seen = (await storage_util.get('user:milestones_seen', false)) || [];
+            if (!seen.includes(crossed)) {
+              setMilestone({ milestone: crossed, youCrossed: false });
+            }
+          }
+          lastCountRef.current = c;
+          timer = setTimeout(poll, 30000);
+        };
+        timer = setTimeout(poll, 30000);
+        return () => clearTimeout(timer);
+      }, [booted, profile]);
+
+      // ── Play milestone chime when overlay opens ──
+      React.useEffect(() => {
+        if (milestone) { try { SoundManager.play('milestone'); haptic(20); } catch {} }
+      }, [milestone]);
+
+      // ── Keyboard shortcuts ──
+      React.useEffect(() => {
+        if (!booted || !profile) return;
+        const onKey = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          // Esc closes any overlay first
+          if (e.key === 'Escape') {
+            if (cheatSheet) { setCheatSheet(false); return; }
+            if (adminOpen) { setAdminOpen(false); return; }
+            if (milestone) { setMilestone(null); return; }
+            if (overlay) { setOverlay(null); setPrefillBeer(null); return; }
+            return;
+          }
+          if (overlay || milestone || adminOpen) return;
+          const k = e.key.toLowerCase();
+          if (k === 'h') setTab('home');
+          else if (k === 't') setTab('toasts');
+          else if (k === 'l') setOverlay('log');
+          else if (k === 's') setTab('stats');
+          else if (k === 'u') setTab('profile');
+          else if (e.key === '?') setCheatSheet(true);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [booted, profile, overlay, milestone, adminOpen, cheatSheet]);
+
+      const handleLogComplete = ({ newCount, crossedMilestone, logEntry }) => {
+        setOverlay(null);
+        setPrefillBeer(null);
+        if (typeof newCount === 'number') lastCountRef.current = newCount;
+        EventLog.record('log_submitted', {
+          beer_id: logEntry?.beer_id, rating: logEntry?.rating,
+          visibility: logEntry?.visibility, has_photo: !!logEntry?.photo,
+        });
+        try { SoundManager.play('clink'); haptic(15); } catch {}
+        if (crossedMilestone) {
+          setMilestone({ milestone: crossedMilestone, youCrossed: true });
+          // Set success banner for 24h
+          const banner = { milestone: crossedMilestone, shown_at: Date.now() };
+          storage_util.set('user:success_banner', banner, false);
+          setSuccessBanner(banner);
+        } else {
+          setTab('home');
+        }
+      };
+
+      const handleCapHit = () => setOverlay('cap');
+
+      const openLogWithBeer = (beer) => {
+        try { SoundManager.play('pour'); } catch {}
+        setPrefillBeer(beer);
+        setOverlay('log');
+      };
+
+      const openLog = () => {
+        try { SoundManager.play('pour'); } catch {}
+        setOverlay('log');
+      };
+
+      const dismissMilestone = async () => {
+        if (milestone) {
+          const seen = (await storage_util.get('user:milestones_seen', false)) || [];
+          if (!seen.includes(milestone.milestone)) seen.push(milestone.milestone);
+          await storage_util.set('user:milestones_seen', seen, false);
+          EventLog.record('milestone_seen', { milestone: milestone.milestone, you_crossed: milestone.youCrossed });
+        }
+        setMilestone(null);
+        setTab('home');
+      };
+
+      const dismissBanner = () => {
+        setSuccessBanner(null);
+        storage_util.set('user:success_banner', null, false);
+      };
+
+      const triggerAdmin = () => {
+        try { SoundManager.play('ting'); haptic(20); } catch {}
+        setAdminOpen(true);
+        EventLog.record('admin_unlocked', {});
+        storage_util.set('user:admin_unlocked', true, false);
+      };
+
+      const handleAdminReset = () => {
+        setAdminOpen(false);
+        setProfile(null);
+        setTab('home');
+      };
+
+      // ── Render ──
+      let content;
+      if (!booted) {
+        content = <Splash />;
+      } else if (!profile) {
+        content = <Onboarding onComplete={async (p) => {
+          setProfile(p);
+          try { SoundManager.play('clink'); haptic(15); } catch {}
+          EventLog.record('profile_created', { member_number: p.member_number });
+        }} />;
+      } else if (overlay === 'log') {
+        content = <LogFlow profile={profile} prefillBeer={prefillBeer} onClose={() => { setOverlay(null); setPrefillBeer(null); }} onComplete={handleLogComplete} onCapHit={handleCapHit} />;
+      } else if (overlay === 'cap') {
+        content = <CapWall profile={profile} onClose={() => setOverlay(null)} />;
+      } else if (overlay === 'settings') {
+        content = <SettingsScreen profile={profile} onBack={() => setOverlay(null)} onReset={() => { setProfile(null); setOverlay(null); setTab('home'); }} />;
+      } else if (overlay === 'breweries') {
+        content = <BreweriesScreen onBack={() => setOverlay(null)} onOpenLog={openLogWithBeer} />;
+      } else if (overlay === 'milestone_history') {
+        content = <MilestoneHistoryScreen profile={profile} onBack={() => setOverlay(null)} />;
+      } else {
+        const screenContent = (() => {
+          if (tab === 'home') return <HomeScreen
+            profile={profile}
+            onNavigate={(n) => setOverlay(n)}
+            onOpenLog={openLog}
+            onOpenLogWithBeer={openLogWithBeer}
+            onTab={setTab}
+            onWordmarkTap={triggerAdmin}
+            successBanner={successBanner}
+            onDismissBanner={dismissBanner}
+            liveCount={lastCountRef.current}
+          />;
+          if (tab === 'toasts') return <ToastsFeed profile={profile} onOpenLog={openLog} />;
+          if (tab === 'stats') return <StatsScreen profile={profile} onOpenLog={(beer) => beer ? openLogWithBeer(beer) : openLog()} onOpenHistory={() => setOverlay('milestone_history')} />;
+          if (tab === 'profile') return <ProfileScreen profile={profile} onNavigate={(n) => setOverlay(n)} />;
+          return null;
+        })();
+        content = <PageFade keyName={tab}>{screenContent}</PageFade>;
+      }
+
+      const showBottomNav = booted && profile && !overlay && !adminOpen;
+
+      // Detect mobile viewport. On phones, skip the simulated-iPhone frame
+      // and let the app fill the actual screen (so scrolling works correctly
+      // and the user can see the whole UI). On desktop, keep the pretty
+      // phone-shaped preview frame.
+      const [isMobile, setIsMobile] = React.useState(() =>
+        typeof window !== 'undefined' && window.innerWidth <= 640
+      );
+      React.useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth <= 640);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+
+      const innerScreen = (
+        <div style={{ position: 'relative', height: '100%', width: '100%', background: '#1A140C', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {/* The content area scrolls on mobile; overlays use position:absolute on top */}
+          <div style={{
+            flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            {content}
+          </div>
+          <OfflineDot />
+          {showBottomNav && (
+            <>
+              <BottomNav active={tab} onTab={setTab} onOpenLog={openLog} />
+              {!isMobile && <HelpButton onClick={() => setCheatSheet(true)} />}
+            </>
+          )}
+          {milestone && (
+            <MilestoneOverlay
+              milestone={milestone.milestone}
+              youCrossed={milestone.youCrossed}
+              memberNumber={profile?.member_number}
+              onClose={dismissMilestone}
+            />
+          )}
+          {adminOpen && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 400 }}>
+              <AdminPanel
+                profile={profile}
+                onClose={() => setAdminOpen(false)}
+                onForceMilestone={(m) => { setAdminOpen(false); setMilestone({ milestone: m, youCrossed: false }); }}
+                onLogReset={handleAdminReset}
+              />
+            </div>
+          )}
+          <CheatSheet open={cheatSheet} onClose={() => setCheatSheet(false)} />
+          {error && <ErrorToast message={error} onDismiss={() => setError(null)} />}
+        </div>
+      );
+
+      // Mobile: render full-screen, no phone frame.
+      if (isMobile) {
+        return (
+          <div data-screen-label={`01 ${overlay || (booted && !profile ? 'onboarding' : tab)}`}
+               style={{ position: 'fixed', inset: 0, background: '#1A140C' }}>
+            {innerScreen}
+          </div>
+        );
+      }
+
+      // Desktop: framed presentation.
+      return (
+        <div data-screen-label={`01 ${overlay || (booted && !profile ? 'onboarding' : tab)}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+          <IOSDevice width={402} height={874} dark>
+            {innerScreen}
+          </IOSDevice>
+          <div style={{
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.12em',
+            color: 'rgba(244,236,221,0.4)', textTransform: 'uppercase',
+          }}>1M BEERS · iOS · v3.0 · PRODUCTION</div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('stage')).render(<App />);
+  </script>
+</body>
+</html>
