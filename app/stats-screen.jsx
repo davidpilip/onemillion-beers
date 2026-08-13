@@ -51,6 +51,8 @@ function StatsScreen({ profile, onOpenLog, onOpenHistory }) {
   const [data, setData] = React.useState(null); // { week, allTime, count, ts }
   const [tab, setTab] = React.useState('week'); // week | all_time
   const [hydrating, setHydrating] = React.useState(false);
+  const [drillStyle, setDrillStyle] = React.useState(null); // tapped beer style for drill-down sheet
+  const [drillRegion, setDrillRegion] = React.useState(null); // tapped region for drill-down sheet
 
   const load = React.useCallback(async () => {
     try {

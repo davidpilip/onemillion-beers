@@ -18,13 +18,15 @@
   }
 
   const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
-    auth: { persistSession: false },
+    // persistSession: keep the email login across app restarts so a user's
+    // beers follow them (and to the same account on any device they sign in on).
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
     realtime: { params: { eventsPerSecond: 4 } },
   });
 
-  // Stable client id for "personal" rows. Stored in localStorage so the same
-  // browser keeps the same identity across sessions. This is also what gets
-  // exported when you want to migrate to a real auth system later.
+  // Fallback identity for anyone not signed in yet (e.g. mid-onboarding, before
+  // they verify their email). Once signed in we key personal rows off the real
+  // Supabase auth user id, so data belongs to the person, not the device.
   const CLIENT_ID_KEY = '1mb:client_id';
   let clientId = localStorage.getItem(CLIENT_ID_KEY);
   if (!clientId) {
@@ -32,15 +34,26 @@
     localStorage.setItem(CLIENT_ID_KEY, clientId);
   }
 
+  // The signed-in user id, kept in sync with the auth session. When present it
+  // is the identity used for all personal reads/writes.
+  let authUserId = null;
+  const identity = () => authUserId || clientId;
+  sb.auth.getSession().then(({ data }) => { authUserId = data?.session?.user?.id || null; }).catch(() => {});
+  sb.auth.onAuthStateChange((_event, session) => {
+    authUserId = session?.user?.id || null;
+    if (typeof window.__onIdentityChange === 'function') window.__onIdentityChange(identity());
+  });
+
   const backend = {
     mode: 'supabase',
     clientId,
+    get userId() { return identity(); },
 
     async get(key, shared) {
       try {
         const q = sb.from('kv_store').select('value')
           .eq('scope', shared ? 'shared' : 'personal').eq('key', key);
-        if (!shared) q.eq('user_id', clientId);
+        if (!shared) q.eq('user_id', identity());
         else q.is('user_id', null);
         // Use limit(1) + order desc instead of maybeSingle so we survive duplicates
         // gracefully (the migration cleans them up but we stay defensive).
@@ -58,7 +71,7 @@
         // Use the kv_set RPC — handles partial-index upsert correctly for both shared & personal
         const { error } = await sb.rpc('kv_set', {
           p_scope: shared ? 'shared' : 'personal',
-          p_user_id: shared ? null : clientId,
+          p_user_id: shared ? null : identity(),
           p_key: key,
           p_value: value,
         });
@@ -102,7 +115,7 @@
         const q = sb.from('kv_store').select('key')
           .eq('scope', shared ? 'shared' : 'personal')
           .like('key', `${prefix}%`);
-        if (!shared) q.eq('user_id', clientId);
+        if (!shared) q.eq('user_id', identity());
         else q.is('user_id', null);
         const { data, error } = await q;
         if (error) throw error;

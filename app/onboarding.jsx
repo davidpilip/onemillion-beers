@@ -1,19 +1,20 @@
 // onboarding.jsx — 5-step onboarding flow with clink animation
-// Steps: welcome → age gate (DOB) → phone → SMS code → handle/display name
+// Steps: welcome → age gate (DOB) → email → email code → handle/display name
 // All state persists immediately to storage.user:profile on completion.
 
 function Onboarding({ onComplete }) {
   const [step, setStep] = React.useState(0);
   const [dob, setDob] = React.useState('');
-  const [phone, setPhone] = React.useState('');
+  const [email, setEmail] = React.useState('');
   const [code, setCode] = React.useState('');
   const [handle, setHandle] = React.useState('');
   const [animatingClink, setAnimatingClink] = React.useState(true);
   const [authError, setAuthError] = React.useState('');
   const [sending, setSending] = React.useState(false);
 
-  // Real SMS auth via Supabase when configured; demo fallback otherwise
-  const hasRealAuth = typeof window !== 'undefined' && window.__SUPABASE && window.__1MB_CONFIG?.smsEnabled;
+  // Real email-code auth via Supabase when configured; demo fallback otherwise.
+  // (Email auth is on by default in Supabase, so just having a client is enough.)
+  const hasRealAuth = typeof window !== 'undefined' && !!window.__SUPABASE;
 
   // animate clink on first paint
   React.useEffect(() => {
@@ -39,23 +40,26 @@ function Onboarding({ onComplete }) {
     const profile = {
       member_number: memberNo,
       handle: handle.trim() || `member${memberNo}`,
-      dob, phone, joined_at: Date.now(),
+      dob, email, joined_at: Date.now(),
       created_id: uiHelpers.uuid(),
       auth_user_id: authUserId,
-      sms_verified: !!authUserId,
+      email_verified: !!authUserId,
     };
     await storage_util.set('user:profile', profile, false);
     onComplete(profile);
   };
 
-  // Send OTP via Supabase (or skip in demo mode)
+  // Email the 6-digit code via Supabase (or skip in demo mode)
   const sendCode = async () => {
     setAuthError('');
     if (!hasRealAuth) { setStep(3); return; }
     setSending(true);
     try {
-      const e164 = '+1' + phone.replace(/\D/g, '');
-      const { error } = await window.__SUPABASE.auth.signInWithOtp({ phone: e164 });
+      const addr = email.trim().toLowerCase();
+      const { error } = await window.__SUPABASE.auth.signInWithOtp({
+        email: addr,
+        options: { shouldCreateUser: true },
+      });
       if (error) throw error;
       setStep(3);
     } catch (e) {
@@ -63,14 +67,14 @@ function Onboarding({ onComplete }) {
     } finally { setSending(false); }
   };
 
-  // Verify code via Supabase (or accept any 6 digits in demo mode)
+  // Verify the emailed code via Supabase (or accept any 6 digits in demo mode)
   const verifyCode = async () => {
     setAuthError('');
     if (!hasRealAuth) { setStep(4); return; }
     setSending(true);
     try {
-      const e164 = '+1' + phone.replace(/\D/g, '');
-      const { error } = await window.__SUPABASE.auth.verifyOtp({ phone: e164, token: code, type: 'sms' });
+      const addr = email.trim().toLowerCase();
+      const { error } = await window.__SUPABASE.auth.verifyOtp({ email: addr, token: code, type: 'email' });
       if (error) throw error;
       setStep(4);
     } catch (e) {
@@ -82,8 +86,8 @@ function Onboarding({ onComplete }) {
   const steps = [
     <Step0 key="0" onNext={() => setStep(1)} animatingClink={animatingClink} />,
     <Step1Age key="1" dob={dob} setDob={setDob} onBack={() => setStep(0)} onNext={() => setStep(2)} />,
-    <Step2Phone key="2" phone={phone} setPhone={setPhone} onBack={() => setStep(1)} onNext={sendCode} sending={sending} error={authError} hasRealAuth={hasRealAuth} />,
-    <Step3Code key="3" phone={phone} code={code} setCode={setCode} onBack={() => setStep(2)} onNext={verifyCode} sending={sending} error={authError} hasRealAuth={hasRealAuth} />,
+    <Step2Email key="2" email={email} setEmail={setEmail} onBack={() => setStep(1)} onNext={sendCode} sending={sending} error={authError} hasRealAuth={hasRealAuth} />,
+    <Step3Code key="3" email={email} code={code} setCode={setCode} onBack={() => setStep(2)} onNext={verifyCode} sending={sending} error={authError} hasRealAuth={hasRealAuth} />,
     <Step4Handle key="4" handle={handle} setHandle={setHandle} onBack={() => setStep(3)} onNext={finish} />,
   ];
 
@@ -248,16 +252,9 @@ function Step1Age({ dob, setDob, onBack, onNext }) {
   );
 }
 
-// ── Step 2: Phone ──
-function Step2Phone({ phone, setPhone, onBack, onNext, sending, error, hasRealAuth }) {
-  const ok = phone.replace(/\D/g, '').length === 10;
-  const formatPhone = (raw) => {
-    let v = raw.replace(/\D/g, '').slice(0, 10);
-    if (v.length > 6) v = `(${v.slice(0,3)}) ${v.slice(3,6)}-${v.slice(6)}`;
-    else if (v.length > 3) v = `(${v.slice(0,3)}) ${v.slice(3)}`;
-    else if (v.length > 0) v = `(${v}`;
-    return v;
-  };
+// ── Step 2: Email ──
+function Step2Email({ email, setEmail, onBack, onNext, sending, error, hasRealAuth }) {
+  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 24px 32px' }}>
       <button onClick={onBack} style={{
@@ -270,32 +267,28 @@ function Step2Phone({ phone, setPhone, onBack, onNext, sending, error, hasRealAu
           fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 36,
           color: '#F4ECDD', letterSpacing: '-0.03em', lineHeight: 1.05,
           marginTop: 20, marginBottom: 12,
-        }}>What's your<br />number?</div>
+        }}>What's your<br />email?</div>
         <div style={{ fontSize: 14, color: '#B8A584', marginBottom: 36, lineHeight: 1.5 }}>
-          {hasRealAuth ? 'Six-digit code in a sec. No password to forget.' : 'Demo mode — any 10-digit number works. Six-digit code in a sec.'}
+          {hasRealAuth ? "We'll email you a six-digit code. No password to forget." : 'Demo mode — any email works. Six-digit code in a sec.'}
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{
-            padding: '20px 16px', background: '#241B10',
-            border: '1.5px solid rgba(244,236,221,0.12)', borderRadius: 18,
-            color: '#F4ECDD', fontFamily: 'Bricolage Grotesque, system-ui',
-            fontWeight: 600, fontSize: 18,
-          }}>🇺🇸 +1</div>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(formatPhone(e.target.value))}
-            placeholder="(555) 123-4567"
-            inputMode="tel"
-            style={{
-              flex: 1, padding: '20px 22px', boxSizing: 'border-box',
-              background: '#241B10',
-              border: `1.5px solid ${ok ? '#F4B73D' : 'rgba(244,236,221,0.12)'}`,
-              borderRadius: 18, color: '#F4ECDD', outline: 'none',
-              fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 600, fontSize: 18,
-              letterSpacing: '0.03em',
-            }}
-          />
-        </div>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && ok && !sending) onNext(); }}
+          placeholder="you@example.com"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          style={{
+            width: '100%', padding: '20px 22px', boxSizing: 'border-box',
+            background: '#241B10',
+            border: `1.5px solid ${ok ? '#F4B73D' : 'rgba(244,236,221,0.12)'}`,
+            borderRadius: 18, color: '#F4ECDD', outline: 'none',
+            fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 600, fontSize: 18,
+            letterSpacing: '0.01em',
+          }}
+        />
       </div>
       {error && (
         <div style={{
@@ -311,8 +304,8 @@ function Step2Phone({ phone, setPhone, onBack, onNext, sending, error, hasRealAu
   );
 }
 
-// ── Step 3: SMS code ──
-function Step3Code({ phone, code, setCode, onBack, onNext, sending, error, hasRealAuth }) {
+// ── Step 3: Email code ──
+function Step3Code({ email, code, setCode, onBack, onNext, sending, error, hasRealAuth }) {
   const ok = code.length === 6;
   // Auto-advance only in demo mode; real mode waits for explicit verify call
   React.useEffect(() => { if (ok && !hasRealAuth) setTimeout(onNext, 280); }, [ok, hasRealAuth]); // eslint-disable-line
@@ -329,7 +322,7 @@ function Step3Code({ phone, code, setCode, onBack, onNext, sending, error, hasRe
           marginBottom: 12,
         }}>Code, please.</div>
         <div style={{ fontSize: 14, color: '#B8A584', marginBottom: 28, lineHeight: 1.5 }}>
-          We sent it to {phone || 'your phone'}. {hasRealAuth ? '' : '(Demo: tap any 6 digits.)'}
+          We emailed it to {email || 'your inbox'}. {hasRealAuth ? 'Check your inbox (and spam).' : '(Demo: tap any 6 digits.)'}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginBottom: 24 }}>
           {[0,1,2,3,4,5].map(i => (

@@ -217,7 +217,7 @@ function SettingsScreen({ profile, onBack, onReset }) {
         <SettingsGroup label="Account">
           <SettingsRow label="Handle" value={profile?.handle || '—'} mono />
           <SettingsRow label="Member #" value={`#${profile?.member_number || '—'}`} mono />
-          <SettingsRow label="Phone" value={profile?.phone || '—'} mono />
+          <SettingsRow label="Email" value={profile?.email || profile?.phone || '—'} mono />
           <SettingsRow label="Joined" value={profile?.joined_at ? new Date(profile.joined_at).toLocaleDateString() : '—'} mono last />
         </SettingsGroup>
 
