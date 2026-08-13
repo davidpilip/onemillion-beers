@@ -16,6 +16,20 @@ function LogFlow({ profile, onClose, onComplete, onCapHit, prefillBeer = null })
   const [visibility, setVisibility] = React.useState('public');
   const [venueName, setVenueName] = React.useState('');
   const [showSameDay, setShowSameDay] = React.useState(false);
+  const [result, setResult] = React.useState(null);   // { newCount, prevCount, logEntry, crossedMilestone }
+  const [sharing, setSharing] = React.useState(false);
+
+  const doShare = async () => {
+    if (sharing || !window.shareBeer) return;
+    setSharing(true);
+    try {
+      await window.shareBeer({
+        beer_name: beer?.name, brewery: beer?.brewery, style: beer?.style,
+        abv: beer?.abv, rating, photo, handle: profile?.handle,
+        venue: venueName?.trim() || null, count: result?.newCount || 0,
+      });
+    } finally { setSharing(false); }
+  };
 
   React.useEffect(() => {
     (async () => {
@@ -138,8 +152,12 @@ function LogFlow({ profile, onClose, onComplete, onCapHit, prefillBeer = null })
       }
     }
 
+    const payload = { newCount, prevCount, logEntry, crossedMilestone: crossed };
+    setResult(payload);
     setPhase('done');
-    setTimeout(() => onComplete({ newCount, prevCount, logEntry, crossedMilestone: crossed }), crossed ? 600 : 1400);
+    // A milestone crossing auto-advances to the big celebration overlay.
+    // A normal log stays on the done screen so the user can share it.
+    if (crossed) setTimeout(() => onComplete(payload), 600);
   };
 
   // ── Render phase ──
@@ -168,6 +186,23 @@ function LogFlow({ profile, onClose, onComplete, onCapHit, prefillBeer = null })
         <div style={{ fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 36, color: '#F4B73D', letterSpacing: '-0.03em', textAlign: 'center', padding: '0 24px' }}>Cheers! 🍻</div>
         <div style={{ fontFamily: 'Geist, system-ui', fontSize: 14, color: '#F4ECDD', opacity: 0.8, textAlign: 'center', padding: '0 32px', lineHeight: 1.5 }}>
           That makes <b>{todayLogged + 1}</b> for you today, and one more for the world.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 420, padding: '20px 32px 0', boxSizing: 'border-box' }}>
+          <button onClick={doShare} disabled={sharing} style={{
+            padding: '18px 20px', borderRadius: 18, border: 'none', cursor: sharing ? 'default' : 'pointer',
+            background: '#F4B73D', color: '#1A140C', opacity: sharing ? 0.7 : 1,
+            fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 700, fontSize: 17,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          }}>
+            {sharing ? 'Preparing image…' : '📸  Share your beer'}
+          </button>
+          <button onClick={() => onComplete(result)} style={{
+            padding: '16px 20px', borderRadius: 18, cursor: 'pointer',
+            background: 'transparent', border: '1.5px solid rgba(244,236,221,0.16)', color: '#F4ECDD',
+            fontFamily: 'Geist, system-ui', fontWeight: 600, fontSize: 16,
+          }}>
+            Done
+          </button>
         </div>
       </div>
     );
