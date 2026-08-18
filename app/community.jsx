@@ -53,7 +53,7 @@ async function resolveBeerOfWeek() {
   return { sponsor, beer: match || null, weekKey: key };
 }
 
-function BeerOfTheWeekCard({ onLog, compact = false }) {
+function BeerOfTheWeekCard({ onLog, onLearnMore, compact = false }) {
   const [data, setData] = React.useState(null);
   const [alreadyLogged, setAlreadyLogged] = React.useState(false);
 
@@ -141,6 +141,17 @@ function BeerOfTheWeekCard({ onLog, compact = false }) {
           </div>
         )}
       </div>
+
+      {!compact && onLearnMore && (
+        <button onClick={() => onLearnMore(data)} style={{
+          marginTop: 12, width: '100%', padding: '10px', borderRadius: 12, position: 'relative',
+          background: 'rgba(244,236,221,0.05)', border: '1px solid rgba(244,236,221,0.1)',
+          color: '#F4B73D', cursor: 'pointer', fontFamily: 'Geist, system-ui', fontWeight: 600, fontSize: 13,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          Learn more <Icon name="arrowRight" size={14} />
+        </button>
+      )}
     </div>
   );
 }

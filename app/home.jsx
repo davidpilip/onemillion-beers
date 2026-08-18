@@ -1,6 +1,6 @@
 // home.jsx — Home screen with live counter, polling, breakdown, and CTA
 
-function HomeScreen({ profile, onNavigate, onOpenLog, onOpenLogWithBeer, onTab, onWordmarkTap, successBanner, onDismissBanner, liveCount, theme = 'amber' }) {
+function HomeScreen({ profile, onNavigate, onOpenLog, onOpenLogWithBeer, onLearnMore, onTab, onWordmarkTap, successBanner, onDismissBanner, liveCount, theme = 'amber' }) {
   const handleWordmarkTap = useTapCounter({ target: 5, windowMs: 3000, onTrigger: onWordmarkTap || (() => {}) });
   const [count, setCount] = React.useState(0);
   const [memberCount, setMemberCount] = React.useState(0);
@@ -196,7 +196,7 @@ function HomeScreen({ profile, onNavigate, onOpenLog, onOpenLogWithBeer, onTab, 
       {/* Beer of the Week */}
       <SectionHeader title="Featured" />
       <div style={{ padding: '0 20px 8px' }}>
-        <BeerOfTheWeekCard onLog={(b) => onOpenLogWithBeer && onOpenLogWithBeer(b)} />
+        <BeerOfTheWeekCard onLog={(b) => onOpenLogWithBeer && onOpenLogWithBeer(b)} onLearnMore={onLearnMore} />
       </div>
 
       {/* Fresh toasts preview */}

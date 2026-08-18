@@ -86,6 +86,7 @@
   <script type="text/babel" src="app/polish.jsx"></script>
   <script type="text/babel" src="app/onboarding.jsx"></script>
   <script type="text/babel" src="app/community.jsx"></script>
+  <script type="text/babel" src="app/beer-detail.jsx"></script>
   <script type="text/babel" src="app/home.jsx"></script>
   <script type="text/babel" src="app/toasts-feed.jsx"></script>
   <script type="text/babel" src="app/stats-screen.jsx"></script>
@@ -264,6 +265,7 @@
       const [overlay, setOverlay] = React.useState(null);
       const [milestone, setMilestone] = React.useState(null);
       const [prefillBeer, setPrefillBeer] = React.useState(null);
+      const [detailBeer, setDetailBeer] = React.useState(null);
       const [error, setError] = React.useState(null);
       const [cheatSheet, setCheatSheet] = React.useState(false);
       const [successBanner, setSuccessBanner] = React.useState(null);
@@ -374,6 +376,11 @@
         setOverlay('log');
       };
 
+      const openBeerDetail = (infoOrNull) => {
+        setDetailBeer(infoOrNull || null);
+        setOverlay('beer_detail');
+      };
+
       const dismissMilestone = async () => {
         if (milestone) {
           const seen = (await storage_util.get('user:milestones_seen', false)) || [];
@@ -419,6 +426,8 @@
         content = <CapWall profile={profile} onClose={() => setOverlay(null)} />;
       } else if (overlay === 'settings') {
         content = <SettingsScreen profile={profile} onBack={() => setOverlay(null)} onReset={() => { setProfile(null); setOverlay(null); setTab('home'); }} />;
+      } else if (overlay === 'beer_detail') {
+        content = <BeerDetailScreen info={detailBeer} onBack={() => setOverlay(null)} onOpenLog={openLogWithBeer} />;
       } else if (overlay === 'breweries') {
         content = <BreweriesScreen onBack={() => setOverlay(null)} onOpenLog={openLogWithBeer} />;
       } else if (overlay === 'milestone_history') {
@@ -430,6 +439,7 @@
             onNavigate={(n) => setOverlay(n)}
             onOpenLog={openLog}
             onOpenLogWithBeer={openLogWithBeer}
+            onLearnMore={openBeerDetail}
             onTab={setTab}
             onWordmarkTap={triggerAdmin}
             successBanner={successBanner}
