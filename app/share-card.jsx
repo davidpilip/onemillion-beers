@@ -101,87 +101,96 @@
     ctx.fillStyle = AMBER;
     ctx.font = '600 30px "Geist", system-ui, sans-serif';
     ctx.save(); ctx.translate(0, 0);
-    ctx.fillText('🍺  1 M   B E E R S', cx, 150);
+    ctx.fillText('🍺  1 MILLION BEERS', cx, 150);
     ctx.restore();
 
     // Optional photo (rounded square)
-    let y = 250;
+    let y = 200;
     const img = data.photo ? await loadImage(data.photo) : null;
     if (img) {
-      const S = 460, x = cx - S / 2;
+      const S = 340, x = cx - S / 2;
       ctx.save();
-      roundRect(ctx, x, y, S, S, 44); ctx.clip();
+      roundRect(ctx, x, y, S, S, 40); ctx.clip();
       // cover-fit
-      const ar = img.width / img.height, box = S / S;
+      const ar = img.width / img.height;
       let sw = img.width, sh = img.height, sx = 0, sy = 0;
       if (ar > 1) { sw = img.height; sx = (img.width - sw) / 2; }
       else if (ar < 1) { sh = img.width; sy = (img.height - sh) / 2; }
       ctx.drawImage(img, sx, sy, sw, sh, x, y, S, S);
       ctx.restore();
       ctx.strokeStyle = 'rgba(244,183,61,0.35)'; ctx.lineWidth = 3;
-      roundRect(ctx, x, y, S, S, 44); ctx.stroke();
-      y += S + 70;
+      roundRect(ctx, x, y, S, S, 40); ctx.stroke();
+      y += S + 48;
     } else {
       // Simple beer glyph medallion
-      ctx.font = '260px "Geist", system-ui, sans-serif';
-      ctx.fillText('🍺', cx, y + 250);
-      y += 340;
+      ctx.font = '230px "Geist", system-ui, sans-serif';
+      ctx.fillText('🍺', cx, y + 220);
+      y += 300;
     }
 
-    // Beer name
+    // Beer name (up to 2 lines)
     ctx.fillStyle = CREAM;
-    ctx.font = '700 74px "Bricolage Grotesque", system-ui, sans-serif';
-    y = wrapCentered(ctx, data.beer_name || 'A beer', cx, y + 30, W - 160, 82, 2) + 18;
+    ctx.font = '700 72px "Bricolage Grotesque", system-ui, sans-serif';
+    y = wrapCentered(ctx, data.beer_name || 'A beer', cx, y + 26, W - 150, 78, 2) + 10;
 
-    // Brewery · style · abv
+    // Brewery · style · abv (single line)
     const sub = [data.brewery, data.style, data.abv ? data.abv + '% ABV' : null]
       .filter(Boolean).join('  ·  ');
     if (sub) {
       ctx.fillStyle = MUTE;
-      ctx.font = '400 32px "Geist", system-ui, sans-serif';
-      y = wrapCentered(ctx, sub, cx, y + 12, W - 180, 42, 2) + 20;
+      ctx.font = '400 31px "Geist", system-ui, sans-serif';
+      y = wrapCentered(ctx, sub, cx, y + 6, W - 150, 40, 1) + 6;
     }
 
     // Stars
-    if (data.rating > 0) { drawStars(ctx, data.rating, cx, y + 44, 46); y += 84; }
+    if (data.rating > 0) { drawStars(ctx, data.rating, cx, y + 44, 44); y += 74; }
 
-    // Venue
+    // Venue (single line, ellipsized)
     if (data.venue) {
       ctx.fillStyle = MUTE;
       ctx.font = '400 28px "Geist", system-ui, sans-serif';
-      ctx.fillText('📍 ' + data.venue, cx, y + 20); y += 44;
+      const full = '📍 ' + data.venue;
+      let v = full;
+      while (ctx.measureText(v + (v === full ? '' : '…')).width > W - 160 && v.length > 4) v = v.slice(0, -1);
+      ctx.fillText(v === full ? v : v + '…', cx, y + 18); y += 40;
     }
 
-    // Footer — community total + progress
+    // ── Footer pinned near the bottom (always sits below the content) ──
     const count = Number(data.count) || 0;
     const pct = Math.max(0.004, Math.min(1, count / 1000000));
-    const barW = W - 200, barX = cx - barW / 2, barY = H - 210;
+    const barW = W - 200, barX = cx - barW / 2;
+    const footTop = H - 260;
 
+    // subtle divider so the total feels like its own zone
+    ctx.strokeStyle = 'rgba(244,236,221,0.10)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(barX, footTop - 34); ctx.lineTo(barX + barW, footTop - 34); ctx.stroke();
+
+    ctx.textAlign = 'center';
     ctx.fillStyle = MUTE;
     ctx.font = '600 26px "Geist", system-ui, sans-serif';
-    ctx.fillText('P O U R E D   T O G E T H E R', cx, barY - 96);
+    ctx.fillText('P O U R E D   T O G E T H E R', cx, footTop + 4);
 
     ctx.fillStyle = AMBER;
-    ctx.font = '700 84px "Bricolage Grotesque", system-ui, sans-serif';
-    ctx.fillText(count.toLocaleString(), cx, barY - 20);
+    ctx.font = '700 82px "Bricolage Grotesque", system-ui, sans-serif';
+    ctx.fillText(count.toLocaleString(), cx, footTop + 82);
 
-    // progress track + fill
+    const barY = footTop + 116;
     ctx.fillStyle = 'rgba(244,236,221,0.12)';
     roundRect(ctx, barX, barY, barW, 14, 7); ctx.fill();
     ctx.fillStyle = AMBER;
     roundRect(ctx, barX, barY, Math.max(14, barW * pct), 14, 7); ctx.fill();
 
     ctx.fillStyle = MUTE;
-    ctx.font = '400 28px "Geist", system-ui, sans-serif';
-    ctx.textAlign = 'left';  ctx.fillText((pct * 100).toFixed(pct < 0.01 ? 3 : 1) + '% to 1M', barX, barY + 56);
-    ctx.textAlign = 'right'; ctx.fillText('of 1,000,000', barX + barW, barY + 56);
+    ctx.font = '400 27px "Geist", system-ui, sans-serif';
+    ctx.textAlign = 'left';  ctx.fillText((pct * 100).toFixed(pct < 0.01 ? 3 : 1) + '% to 1M', barX, barY + 52);
+    ctx.textAlign = 'right'; ctx.fillText('of 1,000,000', barX + barW, barY + 52);
 
     // Handle credit
     if (data.handle) {
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(184,165,132,0.7)';
       ctx.font = '500 26px "Geist", system-ui, sans-serif';
-      ctx.fillText('logged by ' + data.handle + ' · onemillionbeers', cx, H - 70);
+      ctx.fillText('logged by ' + data.handle + ' · onemillionbeers', cx, H - 56);
     }
 
     return await new Promise((res) => canvas.toBlob(res, 'image/png', 0.95));

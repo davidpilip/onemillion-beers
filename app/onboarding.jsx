@@ -124,36 +124,66 @@ function Step0({ onNext, animatingClink }) {
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 32,
       }}>
-        {/* Clink animation */}
+        {/* Clink animation — wind up, swing IN, tap with a spark + recoil */}
         <div style={{ position: 'relative', width: 240, height: 160, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <style>{`
-            @keyframes clink-l { 0% { transform: translateX(-30px) rotate(-15deg); } 45% { transform: translateX(0) rotate(0deg); } 55% { transform: translateX(0) rotate(0deg); } 100% { transform: translateX(-30px) rotate(-15deg); } }
-            @keyframes clink-r { 0% { transform: translateX(30px) rotate(15deg); } 45% { transform: translateX(0) rotate(0deg); } 55% { transform: translateX(0) rotate(0deg); } 100% { transform: translateX(30px) rotate(15deg); } }
-            @keyframes ping { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+            @keyframes clink-l {
+              0%   { transform: translateX(-16px) rotate(-9deg); }
+              12%  { transform: translateX(-24px) rotate(-15deg); }
+              30%  { transform: translateX(4px)   rotate(9deg); }
+              39%  { transform: translateX(-6px)  rotate(3deg); }
+              48%  { transform: translateX(1px)   rotate(6deg); }
+              66%  { transform: translateX(-16px) rotate(-9deg); }
+              100% { transform: translateX(-16px) rotate(-9deg); }
+            }
+            @keyframes clink-r {
+              0%   { transform: translateX(16px) rotate(9deg); }
+              12%  { transform: translateX(24px) rotate(15deg); }
+              30%  { transform: translateX(-4px) rotate(-9deg); }
+              39%  { transform: translateX(6px)  rotate(-3deg); }
+              48%  { transform: translateX(-1px) rotate(-6deg); }
+              66%  { transform: translateX(16px) rotate(9deg); }
+              100% { transform: translateX(16px) rotate(9deg); }
+            }
+            @keyframes clink-spark {
+              0%, 25% { opacity: 0; transform: translateX(-50%) scale(0.2) rotate(0deg); }
+              31%     { opacity: 1; transform: translateX(-50%) scale(1.25) rotate(35deg); }
+              46%     { opacity: 0; transform: translateX(-50%) scale(2)   rotate(60deg); }
+              100%    { opacity: 0; transform: translateX(-50%) scale(0.2) rotate(60deg); }
+            }
+            @keyframes clink-ring {
+              0%, 26% { opacity: 0; transform: translateX(-50%) scale(0.3); }
+              32%     { opacity: 0.9; }
+              50%     { opacity: 0; transform: translateX(-50%) scale(2.8); }
+              100%    { opacity: 0; transform: translateX(-50%) scale(0.3); }
+            }
           `}</style>
           <div style={{
-            animation: animatingClink ? 'clink-l 2.6s ease-in-out infinite' : 'none',
+            animation: animatingClink ? 'clink-l 2.2s cubic-bezier(0.5,0,0.35,1) infinite' : 'none',
             transformOrigin: 'bottom right',
           }}>
             <PintGlass size={90} fill={0.7} />
           </div>
           <div style={{
-            animation: animatingClink ? 'clink-r 2.6s ease-in-out infinite' : 'none',
-            transformOrigin: 'bottom left', marginLeft: -8,
+            animation: animatingClink ? 'clink-r 2.2s cubic-bezier(0.5,0,0.35,1) infinite' : 'none',
+            transformOrigin: 'bottom left', marginLeft: -6,
           }}>
             <PintGlass size={90} fill={0.65} flip />
           </div>
-          {/* Spark when they meet */}
+          {/* Expanding ring on impact */}
           <div style={{
-            position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)',
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'radial-gradient(circle, #FFF6E0 0%, transparent 70%)',
-            opacity: 0,
-            animationName: animatingClink ? 'ping' : 'none',
-            animationDuration: '2.6s',
-            animationTimingFunction: 'ease-out',
-            animationIterationCount: 'infinite',
-            animationDelay: '1.15s',
+            position: 'absolute', top: 30, left: '50%',
+            width: 22, height: 22, borderRadius: '50%',
+            border: '2px solid rgba(255,246,224,0.9)', opacity: 0, pointerEvents: 'none',
+            animation: animatingClink ? 'clink-ring 2.2s ease-out infinite' : 'none',
+          }} />
+          {/* Bright spark flash on impact */}
+          <div style={{
+            position: 'absolute', top: 26, left: '50%',
+            width: 30, height: 30, borderRadius: '50%',
+            background: 'radial-gradient(circle, #FFF6E0 0%, #F4B73D 42%, transparent 72%)',
+            opacity: 0, pointerEvents: 'none',
+            animation: animatingClink ? 'clink-spark 2.2s ease-out infinite' : 'none',
           }} />
         </div>
 
