@@ -146,14 +146,7 @@ function BeerCard({ beer, onClick, trailing }) {
       cursor: onClick ? 'pointer' : 'default', textAlign: 'left',
       fontFamily: 'Geist, system-ui',
     }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: `linear-gradient(135deg, ${beerTone(beer.style)[0]}, ${beerTone(beer.style)[1]})`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: 'inset 0 -8px 12px rgba(0,0,0,0.18)',
-      }}>
-        <Icon name="beer" size={22} color="#F4ECDD" />
-      </div>
+      <BeerGlyph style={beer.style} size={44} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 600, fontSize: 17,
@@ -187,6 +180,43 @@ function beerTone(style) {
   if (s.includes('belgian') || s.includes('tripel') || s.includes('quad') || s.includes('dubbel')) return ['#A66428', '#D9842F'];
   if (s.includes('amber') || s.includes('red') || s.includes('bock')) return ['#A35422', '#C97A2E'];
   return ['#7A4A1F', '#A86524'];
+}
+
+// The liquid color of a beer, by style — drives the little glass glyph.
+function beerLiquid(style) {
+  const s = (style || '').toLowerCase();
+  if (s.includes('stout') || s.includes('porter') || s.includes('schwarz')) return '#241610';
+  if (s.includes('amber') || s.includes('red') || s.includes('bock') || s.includes('brown') || s.includes('dunkel')) return '#B4551F';
+  if (s.includes('belgian') || s.includes('tripel') || s.includes('quad') || s.includes('dubbel')) return '#C87A2C';
+  if (s.includes('sour') || s.includes('gose') || s.includes('berliner') || s.includes('lambic') || s.includes('fruit')) return '#E4726F';
+  if (s.includes('hazy') || s.includes('wheat') || s.includes('hefe') || s.includes('wit') || s.includes('neipa')) return '#EBB43F';
+  if (s.includes('pils') || s.includes('lager') || s.includes('helles') || s.includes('blonde') || s.includes('cream') || s.includes('kolsch') || s.includes('golden')) return '#F2C233';
+  if (s.includes('ipa') || s.includes('pale')) return '#E89A28';
+  if (s.includes('saison') || s.includes('farmhouse')) return '#E7B23E';
+  return '#D08A34';
+}
+
+// A clean little beer glass filled with the beer's color + a foam head.
+function BeerGlyph({ style, size = 44 }) {
+  const liquid = beerLiquid(style);
+  const glassPath = 'M5 7 L23 7 L20.5 27 A3 3 0 0 1 17.5 30 L10.5 30 A3 3 0 0 1 7.5 27 Z';
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: Math.round(size * 0.27), flexShrink: 0,
+      background: '#1B140C', border: '1px solid rgba(244,236,221,0.06)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 28 32" fill="none">
+        <path d={glassPath} fill={liquid} stroke="rgba(244,236,221,0.32)" strokeWidth="1.3" strokeLinejoin="round" />
+        {/* glass highlight */}
+        <path d="M9 10 L10.2 25" stroke="rgba(255,255,255,0.20)" strokeWidth="1.4" strokeLinecap="round" />
+        {/* foam head */}
+        <ellipse cx="14" cy="7.4" rx="9.6" ry="3.5" fill="#FBF3DE" />
+        <ellipse cx="10.4" cy="6.2" rx="3.1" ry="2.6" fill="#FFFFFF" />
+        <ellipse cx="17.6" cy="6.5" rx="3.6" ry="2.8" fill="#FDF7E6" />
+      </svg>
+    </div>
+  );
 }
 
 // ── Rating stars (display + interactive) ──

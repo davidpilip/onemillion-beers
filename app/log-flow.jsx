@@ -731,12 +731,7 @@ function ToastStep({ beer, toast, setToast, rating, photo, todayLogged, visibili
           {photo ? (
             <img src={photo} alt="" style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'cover' }} />
           ) : (
-            <div style={{
-              width: 56, height: 56, borderRadius: 14,
-              background: `linear-gradient(135deg, ${uiHelpers.beerTone(beer.style)[0]}, ${uiHelpers.beerTone(beer.style)[1]})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'inset 0 -8px 12px rgba(0,0,0,0.18)',
-            }}><Icon name="beer" size={26} color="#F4ECDD" /></div>
+            <BeerGlyph style={beer.style} size={56} />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'Bricolage Grotesque, system-ui', fontWeight: 600, fontSize: 15, color: '#F4ECDD' }}>{beer.name}</div>
@@ -790,11 +785,7 @@ function SelectedBeerPill({ beer }) {
       background: '#241B10', border: '1px solid rgba(244,236,221,0.08)',
       borderRadius: 999, marginBottom: 22, alignSelf: 'flex-start',
     }}>
-      <div style={{
-        width: 24, height: 24, borderRadius: 8,
-        background: `linear-gradient(135deg, ${uiHelpers.beerTone(beer.style)[0]}, ${uiHelpers.beerTone(beer.style)[1]})`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}><Icon name="beer" size={14} color="#F4ECDD" /></div>
+      <BeerGlyph style={beer.style} size={24} />
       <div style={{ fontFamily: 'Geist, system-ui', fontSize: 13, fontWeight: 600, color: '#F4ECDD' }}>{beer.name}</div>
       <div style={{ fontSize: 11, color: '#B8A584' }}>· {beer.brewery}</div>
     </div>
