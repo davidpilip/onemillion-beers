@@ -16,13 +16,10 @@ function ToastsFeed({ profile, onOpenLog }) {
     try {
       // Bulk fetch all toast:* rows in one query
       const rows = await storage_util.listFull('toast:', true);
-      // Merge with legacy array-style entries
-      const days = [0, 1, 2].map(offset => {
-        const d = new Date(); d.setUTCDate(d.getUTCDate() - offset);
-        return d.toISOString().slice(0, 10);
-      });
-      const arrays = await Promise.all(days.map(d => storage_util.get(`toasts:feed:${d}`, true).catch(() => null)));
-      const legacy = arrays.flatMap(a => a || []);
+      // Merge with legacy array-style entries — pull ALL feed-day rows (any
+      // date) in one query so older posts from friends still show up.
+      const legacyRows = await storage_util.listFull('toasts:feed:', true).catch(() => []);
+      const legacy = legacyRows.flatMap(r => Array.isArray(r.value) ? r.value : []);
       const seen = new Set(); const out = [];
       for (const t of [...rows.map(r => r.value), ...legacy]) {
         if (!t || !t.id || seen.has(t.id)) continue;
