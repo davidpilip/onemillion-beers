@@ -568,6 +568,110 @@ function RateStep({ beer, rating, setRating, onNext }) {
 }
 
 // ── Step: Toast (review text + visibility + venue) ──
+// Venue autocomplete — queries Photon (free OpenStreetMap geocoder, no API key).
+// Biases toward real places (amenities) so bars/pubs/restaurants surface first.
+// Falls back gracefully to whatever the user typed if the lookup fails.
+function VenuePicker({ value, onChange }) {
+  const [q, setQ] = React.useState(value || '');
+  const [results, setResults] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [hover, setHover] = React.useState(-1);
+  const boxRef = React.useRef(null);
+  const timer = React.useRef(null);
+  const reqId = React.useRef(0);
+
+  React.useEffect(() => { setQ(value || ''); }, [value]);
+
+  const search = (text) => {
+    clearTimeout(timer.current);
+    const t = text.trim();
+    if (t.length < 3) { setResults([]); setLoading(false); return; }
+    setLoading(true);
+    const myReq = ++reqId.current;
+    timer.current = setTimeout(async () => {
+      try {
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(t)}&limit=6&lang=en&osm_tag=amenity`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (myReq !== reqId.current) return; // a newer keystroke won
+        const feats = (data.features || []).map(f => {
+          const p = f.properties || {};
+          const name = p.name || p.street || p.city;
+          const sub = [p.street && p.name ? p.street : null, p.city, p.state, p.country]
+            .filter(Boolean).slice(0, 2).join(', ');
+          return name ? { name, sub, key: `${p.osm_id || ''}:${p.osm_value || ''}` } : null;
+        }).filter(Boolean);
+        setResults(feats);
+      } catch (_) { setResults([]); }
+      finally { if (myReq === reqId.current) setLoading(false); }
+    }, 300);
+  };
+
+  const onInput = (text) => {
+    const v = text.slice(0, 60);
+    setQ(v); onChange(v); setOpen(true); setHover(-1); search(v);
+  };
+  const pick = (r) => {
+    setQ(r.name); onChange(r.name); setResults([]); setOpen(false);
+  };
+
+  React.useEffect(() => {
+    const h = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => { document.removeEventListener('mousedown', h); clearTimeout(timer.current); };
+  }, []);
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative', marginTop: 16 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+        background: '#241B10', borderRadius: 14, border: '1px solid rgba(244,236,221,0.08)',
+      }}>
+        <Icon name="pin" size={16} color="#F4B73D" />
+        <input
+          value={q}
+          onChange={(e) => onInput(e.target.value)}
+          onFocus={() => { if (results.length) setOpen(true); }}
+          placeholder="Tag a bar or venue (optional)"
+          style={{
+            flex: 1, background: 'none', border: 'none', outline: 'none',
+            color: '#F4ECDD', fontFamily: 'Geist, system-ui', fontSize: 14,
+          }}
+        />
+        {loading && <span style={{ fontSize: 11, color: '#7A6B52', fontFamily: 'JetBrains Mono, monospace' }}>···</span>}
+      </div>
+      {open && results.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6, zIndex: 60,
+          background: '#241B10', border: '1px solid rgba(244,236,221,0.14)', borderRadius: 14,
+          overflow: 'hidden', boxShadow: '0 16px 40px rgba(0,0,0,0.55)', maxHeight: 250, overflowY: 'auto',
+        }}>
+          {results.map((r, i) => (
+            <button
+              key={r.key + i}
+              onMouseDown={(e) => { e.preventDefault(); pick(r); }}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(-1)}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
+                width: '100%', textAlign: 'left', padding: '11px 14px', cursor: 'pointer',
+                background: hover === i ? 'rgba(244,183,61,0.10)' : 'none', border: 'none',
+                borderBottom: i < results.length - 1 ? '1px solid rgba(244,236,221,0.06)' : 'none',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F4ECDD', fontFamily: 'Geist, system-ui', fontSize: 14, fontWeight: 600 }}>
+                <Icon name="pin" size={13} color="#F4B73D" /> {r.name}
+              </span>
+              {r.sub && <span style={{ color: '#B8A584', fontFamily: 'Geist, system-ui', fontSize: 12, paddingLeft: 21 }}>{r.sub}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ToastStep({ beer, toast, setToast, rating, photo, todayLogged, visibility, setVisibility, venueName, setVenueName, onSubmit }) {
   const remaining = 240 - toast.length;
   return (
@@ -600,22 +704,8 @@ function ToastStep({ beer, toast, setToast, rating, photo, todayLogged, visibili
         <span>{remaining}</span>
       </div>
 
-      {/* Venue (optional) */}
-      <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 14px', background: '#241B10', borderRadius: 14,
-        border: '1px solid rgba(244,236,221,0.08)',
-      }}>
-        <Icon name="pin" size={16} color="#F4B73D" />
-        <input
-          value={venueName}
-          onChange={(e) => setVenueName(e.target.value.slice(0, 40))}
-          placeholder="Tag a venue (optional)"
-          style={{
-            flex: 1, background: 'none', border: 'none', outline: 'none',
-            color: '#F4ECDD', fontFamily: 'Geist, system-ui', fontSize: 14,
-          }}
-        />
-      </div>
+      {/* Venue (optional) — autocomplete against OpenStreetMap (Photon) */}
+      <VenuePicker value={venueName} onChange={setVenueName} />
 
       {/* Visibility toggle */}
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
