@@ -74,8 +74,13 @@ function Onboarding({ onComplete }) {
     setSending(true);
     try {
       const addr = email.trim().toLowerCase();
-      const { error } = await window.__SUPABASE.auth.verifyOtp({ email: addr, token: code, type: 'email' });
-      if (error) throw error;
+      // Returning users verify with type 'email'; brand-new signups confirm
+      // with a 'signup' token. Try 'email' first, then fall back to 'signup'.
+      let { error } = await window.__SUPABASE.auth.verifyOtp({ email: addr, token: code, type: 'email' });
+      if (error) {
+        const retry = await window.__SUPABASE.auth.verifyOtp({ email: addr, token: code, type: 'signup' });
+        if (retry.error) throw retry.error;
+      }
       setStep(4);
     } catch (e) {
       setAuthError(e.message || 'Wrong code. Try again.');
